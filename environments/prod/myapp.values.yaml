@@ -1,0 +1,45 @@
+# myapp - prod overrides
+image:
+  tag: "1.27"
+  pullPolicy: IfNotPresent
+
+env:
+  LOG_LEVEL: warn
+
+existingSecret: myapp-secrets
+
+ingress:
+  enabled: true
+  className: traefik
+  host: myapp.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+migrations:
+  enabled: true
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: myapp

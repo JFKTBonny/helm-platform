@@ -1,0 +1,8 @@
+# Rendered by Helmfile first (.gotmpl), then passed to charts/cluster-issuers
+email: {{ .Values.acmeEmail | quote }}
+ingressClass: traefik
+issuers:
+  - name: letsencrypt-staging
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+  - name: letsencrypt-prod
+    server: https://acme-v02.api.letsencrypt.org/directory

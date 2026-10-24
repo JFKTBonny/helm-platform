@@ -1,0 +1,26 @@
+# Values shared by every environment (loaded first, then <env>.yaml overrides).
+
+# GitHub user/org (lowercase) that owns oci://ghcr.io/<owner>/charts
+ghcrOwner: your-github-user
+
+# Pinned third-party chart versions. Check for updates with:
+#   helm search repo jetstack/cert-manager --versions | head
+#   helm search repo traefik/traefik --versions | head
+#   helm search repo metrics-server/metrics-server --versions | head
+versions:
+  certManager: v1.20.0
+  traefik: 41.0.2
+  metricsServer: 3.13.0
+
+acmeEmail: platform@example.com
+
+certManager:
+  enabled: true
+
+metricsServer:
+  enabled: true
+  insecureKubeletTLS: false
+
+traefik:
+  replicas: 2
+  serviceType: LoadBalancer

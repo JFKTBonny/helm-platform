@@ -1,0 +1,16 @@
+# Used by chart-testing (ct install) on a temporary kind cluster.
+# Every *-values.yaml file in ci/ is installed as a separate test case.
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: "1.27"
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+migrations:
+  enabled: true

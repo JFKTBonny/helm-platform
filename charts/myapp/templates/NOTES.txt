@@ -1,0 +1,16 @@
+{{ .Chart.Name }} {{ .Chart.Version }} deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+Image: {{ include "myapp.image" . }}
+
+{{- if .Values.ingress.enabled }}
+
+URL: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}{{ .Values.ingress.path }}
+{{- else }}
+
+Access it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "myapp.fullname" . }} 8080:{{ .Values.service.port }}
+  open http://127.0.0.1:8080
+{{- end }}
+
+Check status:
+  helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

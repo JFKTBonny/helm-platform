@@ -1,0 +1,12 @@
+# prod: published chart with an explicit, reviewed version.
+
+# Set to false on managed clusters that already ship metrics-server (e.g. GKE, AKS)
+metricsServer:
+  enabled: true
+
+traefik:
+  replicas: 3
+
+myapp:
+  chart: myorg/myapp
+  version: 0.1.0

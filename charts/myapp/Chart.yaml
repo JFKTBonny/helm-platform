@@ -1,0 +1,20 @@
+apiVersion: v2
+name: myapp
+description: Example application chart (Deployment, Service, Ingress, HPA, ConfigMap, migration hook)
+type: application
+
+# Chart version: bump on EVERY change to this folder (CI enforces it).
+version: 0.1.0
+
+# Version of the application image deployed by default.
+appVersion: "1.27"
+
+kubeVersion: ">=1.29.0-0"
+
+maintainers:
+  - name: your-name
+    email: you@example.com
+
+keywords:
+  - example
+  - web

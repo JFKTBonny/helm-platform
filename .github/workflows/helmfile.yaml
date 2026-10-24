@@ -1,0 +1,134 @@
+# Whole-environment deployments with Helmfile.
+#  - Pull request: lint + render every environment (no cluster needed)
+#  - Manual run:   diff or apply against the chosen environment
+name: Helmfile
+
+on:
+  pull_request:
+    paths:
+      - "helmfile/**"
+      - "environments/**"
+      - "charts/**"
+      - ".github/workflows/helmfile.yaml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: diff = preview only, apply = deploy changes
+        required: true
+        type: choice
+        default: diff
+        options:
+          - diff
+          - apply
+      selector:
+        description: Optional label selector, e.g. tier=app or app=myapp
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  HELM_VERSION: v4.3.0
+  HELMFILE_VERSION: 1.2.3
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, staging, prod]
+    defaults:
+      run:
+        working-directory: helmfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install Helmfile and helm-diff
+        working-directory: .
+        run: |
+          curl -fsSL "https://github.com/helmfile/helmfile/releases/download/v${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION}_linux_amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin helmfile
+          helm plugin install https://github.com/databus23/helm-diff --verify=false
+          helmfile --version
+
+      - name: Log in to GHCR (to pull our published charts)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Lint
+        run: helmfile -e ${{ matrix.env }} lint
+
+      - name: Render
+        run: helmfile -e ${{ matrix.env }} template > /dev/null
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: helmfile-${{ inputs.environment }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: helmfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install Helmfile and helm-diff
+        working-directory: .
+        run: |
+          curl -fsSL "https://github.com/helmfile/helmfile/releases/download/v${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION}_linux_amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin helmfile
+          helm plugin install https://github.com/databus23/helm-diff --verify=false
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          printf '%s' "$KUBECONFIG_CONTENT" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Helmfile ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          ARGS=(-e "${{ inputs.environment }}")
+          if [[ -n "${{ inputs.selector }}" ]]; then
+            ARGS+=(-l "${{ inputs.selector }}")
+          fi
+          if [[ "${{ inputs.action }}" == "apply" ]]; then
+            helmfile "${ARGS[@]}" apply --suppress-secrets
+          else
+            helmfile "${ARGS[@]}" diff --suppress-secrets
+          fi

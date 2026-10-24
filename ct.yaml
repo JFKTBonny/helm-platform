@@ -1,0 +1,8 @@
+# chart-testing configuration (https://github.com/helm/chart-testing)
+target-branch: main
+chart-dirs:
+  - charts
+validate-maintainers: false
+# Fail the PR when a chart changed but Chart.yaml "version" was not bumped
+check-version-increment: true
+helm-extra-args: --timeout 5m

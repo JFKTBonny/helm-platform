@@ -1,0 +1,76 @@
+name: Lint and Test Charts
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "environments/**"
+      - "ct.yaml"
+      - ".github/workflows/lint-test.yaml"
+
+env:
+  HELM_VERSION: v4.3.0
+
+jobs:
+  render-environments:
+    name: Render myapp for each environment
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, staging, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Lint with environment values
+        run: helm lint charts/myapp -f environments/${{ matrix.env }}/myapp.values.yaml --strict
+
+      - name: Render templates
+        run: helm template myapp charts/myapp -f environments/${{ matrix.env }}/myapp.values.yaml > /dev/null
+
+  chart-testing:
+    name: chart-testing (lint + install on kind)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.8.0
+
+      - name: List changed charts
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --config ct.yaml)
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint charts
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct lint --config ct.yaml
+
+      - name: Create kind cluster
+        if: steps.list-changed.outputs.changed == 'true'
+        uses: helm/kind-action@v1.12.0
+
+      - name: Install and test charts
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct install --config ct.yaml

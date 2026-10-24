@@ -1,0 +1,17 @@
+# myapp - dev overrides (merged on top of charts/myapp/values.yaml)
+replicaCount: 1
+
+image:
+  tag: "1.27"
+  pullPolicy: Always
+
+env:
+  LOG_LEVEL: debug
+
+ingress:
+  enabled: true
+  className: traefik
+  host: myapp.dev.example.com
+
+migrations:
+  enabled: false

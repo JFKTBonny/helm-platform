@@ -1,0 +1,12 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myapp.fullname" . }}-config
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+data:
+  app.conf: |-
+{{ .Files.Get "files/app.conf" | indent 4 }}
+  environment: {{ .Release.Namespace | quote }}
+{{- end }}

@@ -1,0 +1,17 @@
+# traefik/traefik
+deployment:
+  replicas: {{ .Values.traefik.replicas }}
+
+service:
+  type: {{ .Values.traefik.serviceType }}
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesCRD:
+    enabled: true

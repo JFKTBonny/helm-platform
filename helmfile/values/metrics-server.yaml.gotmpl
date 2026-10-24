@@ -1,0 +1,7 @@
+# metrics-server/metrics-server
+{{- if .Values.metricsServer.insecureKubeletTLS }}
+args:
+  - --kubelet-insecure-tls
+{{- else }}
+args: []
+{{- end }}

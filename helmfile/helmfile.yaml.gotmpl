@@ -1,0 +1,108 @@
+# Helmfile: deploys a WHOLE environment (platform components + apps) in order.
+#
+#   helmfile -e dev diff
+#   helmfile -e dev apply
+#   helmfile -e prod -l tier=app apply        # only the apps
+#
+# Run from this folder, or from the repo root with:  helmfile -f helmfile/helmfile.yaml.gotmpl -e dev ...
+
+environments:
+  dev:
+    values:
+      - environments/common.yaml
+      - environments/dev.yaml
+  staging:
+    values:
+      - environments/common.yaml
+      - environments/staging.yaml
+  prod:
+    values:
+      - environments/common.yaml
+      - environments/prod.yaml
+
+---
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  historyMax: 10
+  createNamespace: true
+  cleanupOnFail: true
+
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: traefik
+    url: https://traefik.github.io/charts
+  - name: metrics-server
+    url: https://kubernetes-sigs.github.io/metrics-server/
+  # Our own charts, published by .github/workflows/release.yaml
+  - name: myorg
+    url: ghcr.io/{{ .Values.ghcrOwner }}/charts
+    oci: true
+
+releases:
+
+  # ---------- Platform ----------
+
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: {{ .Values.versions.certManager }}
+    installed: {{ .Values.certManager.enabled }}
+    labels:
+      tier: platform
+    values:
+      - values/cert-manager.yaml
+
+  - name: cluster-issuers
+    namespace: cert-manager
+    chart: ./charts/cluster-issuers
+    installed: {{ .Values.certManager.enabled }}
+    needs:
+      - cert-manager/cert-manager
+    labels:
+      tier: platform
+    values:
+      - values/cluster-issuers.yaml.gotmpl
+
+  - name: traefik
+    namespace: traefik
+    chart: traefik/traefik
+    version: {{ .Values.versions.traefik }}
+    labels:
+      tier: platform
+    values:
+      - values/traefik.yaml.gotmpl
+
+  - name: metrics-server
+    namespace: kube-system
+    chart: metrics-server/metrics-server
+    version: {{ .Values.versions.metricsServer }}
+    installed: {{ .Values.metricsServer.enabled }}
+    labels:
+      tier: platform
+    values:
+      - values/metrics-server.yaml.gotmpl
+
+  # ---------- Applications ----------
+
+  - name: myapp
+    namespace: myapp-{{ .Environment.Name }}
+    # dev: local chart folder | staging/prod: published OCI chart, pinned version
+    chart: {{ .Values.myapp.chart }}
+    {{- if .Values.myapp.version }}
+    version: {{ .Values.myapp.version | quote }}
+    {{- end }}
+    needs:
+      - traefik/traefik
+    labels:
+      tier: app
+      app: myapp
+    values:
+      - ../environments/{{ .Environment.Name }}/myapp.values.yaml
+      {{- if env "MYAPP_IMAGE_TAG" }}
+      # CI override: MYAPP_IMAGE_TAG=1.28 helmfile -e dev apply
+      - image:
+          tag: {{ env "MYAPP_IMAGE_TAG" | quote }}
+      {{- end }}

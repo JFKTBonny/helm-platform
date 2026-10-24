@@ -1,0 +1,22 @@
+# Packaged charts
+*.tgz
+.packages/
+
+# Downloaded chart dependencies
+charts/*/charts/
+helmfile/charts/*/charts/
+
+# Local overrides and anything secret
+*.local.yaml
+*.secret.yaml
+secrets*.yaml
+.kube/
+kubeconfig*
+
+# Helmfile cache
+.helmfile/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

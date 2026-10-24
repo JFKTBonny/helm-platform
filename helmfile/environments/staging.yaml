@@ -1,0 +1,8 @@
+# staging: deploys the PUBLISHED chart, same as prod but can run ahead.
+
+traefik:
+  replicas: 2
+
+myapp:
+  chart: myorg/myapp
+  version: 0.1.0

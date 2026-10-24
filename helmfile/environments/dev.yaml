@@ -1,0 +1,14 @@
+# dev: local/kind cluster, deploys the chart straight from the repo folder.
+
+metricsServer:
+  enabled: true
+  # kind / minikube kubelets use self-signed certs
+  insecureKubeletTLS: true
+
+traefik:
+  replicas: 1
+  serviceType: NodePort
+
+myapp:
+  chart: ../charts/myapp
+  version: ""

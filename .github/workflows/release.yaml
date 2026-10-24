@@ -1,0 +1,57 @@
+name: Release Charts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  HELM_VERSION: v4.3.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Package and push new chart versions
+        run: |
+          set -euo pipefail
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REGISTRY="oci://ghcr.io/${OWNER}/charts"
+          mkdir -p .packages
+
+          for chart in charts/*/; do
+            name=$(yq '.name' "${chart}Chart.yaml")
+            version=$(yq '.version' "${chart}Chart.yaml")
+
+            # Never overwrite a published version
+            if helm show chart "${REGISTRY}/${name}" --version "${version}" > /dev/null 2>&1; then
+              echo "skip: ${name} ${version} already published"
+              continue
+            fi
+
+            helm dependency update "${chart}"
+            helm package "${chart}" --destination .packages
+            helm push ".packages/${name}-${version}.tgz" "${REGISTRY}"
+            echo "pushed: ${REGISTRY}/${name}:${version}" >> "$GITHUB_STEP_SUMMARY"
+          done

@@ -1,0 +1,22 @@
+# myapp - staging overrides (keep close to prod)
+replicaCount: 2
+
+image:
+  tag: "1.27"
+
+env:
+  LOG_LEVEL: info
+
+existingSecret: myapp-secrets
+
+ingress:
+  enabled: true
+  className: traefik
+  host: myapp.staging.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+  tls:
+    enabled: true
+
+migrations:
+  enabled: true
